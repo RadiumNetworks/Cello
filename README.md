@@ -6,6 +6,8 @@
 
 Built with C#, .NET 9, the Windows App SDK, and just enough audio tech to keep the neighbors guessing.
 
+![Time to relax](./media/cello.png)
+
 ## What is in the case?
 
 - Real-time monophonic pitch detection for cello and guitar
@@ -33,13 +35,13 @@ Before slipping into the grid, bring:
 
 The FluidR3 binary is about 151 MB, too large for ordinary GitHub storage, so it stays out of the repository. Download it from [Internet Archive](https://archive.org/download/fluidr3-gm-gs/FluidR3_GM_GS.sf2) and save it here:
 
-`Assets/SoundFonts/FluidR3_GM_GS.sf2`
+`Cello/Assets/SoundFonts/FluidR3_GM_GS.sf2`
 
 Verify the payload before trusting it:
 
 `SHA-256: 545B2833936F15F04DF5F0C5C4096B3BA6CED46EC7031F61991CAE46F8681986`
 
-The FluidR3 copyright and MIT notice remain in `Assets/SoundFonts/FluidR3_LICENSE.txt`. The `.sf2` and `.sf3` binaries are deliberately excluded by `.gitignore`; their license files are not.
+The FluidR3 copyright and MIT notice remain in `Cello/Assets/SoundFonts/FluidR3_LICENSE.txt`. The `.sf2` and `.sf3` binaries are deliberately excluded by `.gitignore`; their license files are not.
 
 ## Build the rig
 
@@ -48,8 +50,8 @@ In VS Code, run the **build Cello** task with `Ctrl+Shift+B`.
 Or use the .NET CLI:
 
 ```powershell
-dotnet restore Cello.sln -r win-x86 -p:Platform=x86
-dotnet build Cello.sln --no-restore
+dotnet restore Cello/Cello.sln -r win-x86 -p:Platform=x86
+dotnet build Cello/Cello.sln --no-restore
 ```
 
 The project also supports x64 and ARM64. Match the runtime identifier and platform when switching architecture.
@@ -59,7 +61,7 @@ The project also supports x64 and ARM64. Match the runtime identifier and platfo
 For the known-good x86 route:
 
 ```powershell
-dotnet run --project .\Cello.csproj --no-build -r win-x86 -p:Platform=x86
+dotnet run --project .\Cello\Cello.csproj --no-build -r win-x86 -p:Platform=x86
 ```
 
 `Microsoft.Windows.SDK.BuildTools.WinApp` handles development identity registration and launches the packaged application. If a previous instance is still lurking in the shadows, close it before rebuilding so it does not lock the output files.

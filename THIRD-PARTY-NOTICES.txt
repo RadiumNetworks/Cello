@@ -1,0 +1,128 @@
+THIRD-PARTY NOTICES
+
+Cello incorporates or is built with third-party software and assets. Each
+component remains subject to its own license terms. These notices do not
+change those terms.
+
+==============================================================================
+FluidR3 GM+GS SoundFont
+==============================================================================
+
+Copyright (c) 2000-2002, 2008 Frank Wen <getfrank@gmail.com>
+
+The SoundFont is distributed under the MIT License. Its complete license,
+source information, and checksum are provided in:
+
+    Cello/Assets/SoundFonts/FluidR3_LICENSE.txt
+
+That file must remain with distributions that include the SoundFont. The
+SoundFont binary is not stored in the Cello source repository.
+
+==============================================================================
+MeltySynth 2.4.1
+==============================================================================
+
+Project: https://github.com/sinshu/meltysynth
+License: MIT
+
+C# Synth (http://csharpsynthproject.codeplex.com):
+Copyright (C) 2014 Alex Veltsistas
+
+TinySoundFont (https://github.com/schellingb/TinySoundFont):
+Copyright (C) 2017, 2018 Bernhard Schelling
+Based on SFZero, Copyright (C) 2012 Steve Folta
+(https://github.com/stevefolta/SFZero)
+
+MeltySynth:
+Copyright (C) 2021 Nobuaki Tanaka
+
+==============================================================================
+NAudio.Core 3.0.1 and NAudio.Wasapi 3.0.1
+==============================================================================
+
+Copyright (c) Mark Heath 2026
+Project: https://github.com/naudio/NAudio
+License: MIT
+
+==============================================================================
+System.Numerics.Tensors 9.0.0
+==============================================================================
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+Project: https://github.com/dotnet/runtime
+License: MIT
+
+The MIT License text below applies to MeltySynth, NAudio.Core,
+NAudio.Wasapi, and System.Numerics.Tensors, subject to the copyright notices
+listed above.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+==============================================================================
+Microsoft Windows App SDK 2.4.0 and related packages
+==============================================================================
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+Project: https://github.com/microsoft/WindowsAppSDK
+
+The Windows App SDK is licensed under the Microsoft Software License Terms
+for the Microsoft Windows App SDK, not under Cello's MIT License. Those terms
+permit redistribution of files binplaced with an application by the Windows
+App SDK NuGet package, subject to their distribution requirements and
+restrictions.
+
+The package also contains a NOTICE.txt covering incorporated third-party
+components, including their applicable copyright and license terms. The
+complete, authoritative license and notice files are included in the
+Microsoft.WindowsAppSDK 2.4.0 NuGet package:
+
+    license.txt
+    NOTICE.txt
+
+Package: https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.4.0
+Third-party source information: https://3rdpartysource.microsoft.com/
+
+Related Windows App SDK packages restored by this application include the
+Base, Foundation, Runtime, WinUI, DWrite, InteractiveExperiences, Widgets,
+Search, AI, and ML packages. Their Microsoft and third-party components remain
+subject to the license and NOTICE files supplied by Microsoft.
+
+==============================================================================
+Microsoft Edge WebView2 1.0.3719.77
+==============================================================================
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+Project: https://developer.microsoft.com/microsoft-edge/webview2/
+
+WebView2 is a transitive dependency of the Windows App SDK WinUI package. It
+is governed by the Microsoft license terms and third-party notices supplied
+with the Microsoft.Web.WebView2 NuGet package, not by Cello's MIT License.
+
+Package: https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.3719.77
+
+==============================================================================
+Microsoft build tooling
+==============================================================================
+
+Microsoft.Windows.SDK.BuildTools, Microsoft.Windows.SDK.BuildTools.MSIX, and
+Microsoft.Windows.SDK.BuildTools.WinApp are used to build and package Cello.
+They are governed by the license terms supplied with those packages. They are
+build-time tools and are not relicensed under Cello's MIT License.
