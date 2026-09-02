@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="Cello.Audio.AudioSpectrumControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid RowSpacing="4">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="110" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            x:Name="DominantFrequencyText"
+            HorizontalAlignment="Center"
+            FontWeight="SemiBold"
+            Text="Dominante Frequenz: –" />
+
+        <Canvas
+            x:Name="SpectrumCanvas"
+            Grid.Row="1"
+            MinWidth="280"
+            SizeChanged="SpectrumCanvas_SizeChanged" />
+
+        <Grid Grid.Row="2">
+            <TextBlock HorizontalAlignment="Left" FontSize="11" Text="65 Hz" />
+            <TextBlock HorizontalAlignment="Center" FontSize="11" Text="440 Hz" />
+            <TextBlock HorizontalAlignment="Right" FontSize="11" Text="4,4 kHz" />
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="Cello.NotationRecorderPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:notation="using:Cello.Notation"
+    mc:Ignorable="d">
+
+    <Grid Padding="24" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <FontIcon
+                VerticalAlignment="Center"
+                FontSize="40"
+                Glyph="&#xE8D6;" />
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Style="{ThemeResource TitleTextBlockStyle}" Text="Fortlaufende Notation" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="Erkannte Töne aufnehmen, notieren und laufend als MusicXML sichern"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Button
+                x:Name="StartRecordingButton"
+                Click="StartRecordingButton_Click"
+                Content="Aufnahme starten"
+                Style="{ThemeResource AccentButtonStyle}" />
+            <Button
+                x:Name="StopRecordingButton"
+                Grid.Column="1"
+                Click="StopRecordingButton_Click"
+                Content="Aufnahme beenden"
+                IsEnabled="False" />
+            <Button
+                Grid.Column="2"
+                Click="ChooseFileButton_Click"
+                Content="MusicXML-Datei wählen" />
+            <Button
+                x:Name="ClearButton"
+                Grid.Column="3"
+                Click="ClearButton_Click"
+                Content="Notation löschen"
+                IsEnabled="False" />
+            <StackPanel Grid.Column="4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <TextBlock
+                    x:Name="CurrentPitchText"
+                    HorizontalAlignment="Right"
+                    FontSize="24"
+                    FontWeight="SemiBold"
+                    Text="–" />
+                <TextBlock
+                    x:Name="ToneCountText"
+                    HorizontalAlignment="Right"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="0 Töne" />
+            </StackPanel>
+        </Grid>
+
+        <Border
+            Grid.Row="2"
+            Background="White"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="12">
+            <ScrollViewer
+                x:Name="NotationScrollViewer"
+                HorizontalScrollBarVisibility="Auto"
+                HorizontalScrollMode="Enabled"
+                VerticalScrollBarVisibility="Disabled"
+                VerticalScrollMode="Disabled"
+                ZoomMode="Disabled">
+                <notation:ContinuousNotationControl x:Name="ContinuousNotation" />
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Grid.Row="3" Spacing="8">
+            <TextBlock
+                x:Name="SaveFileText"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="Keine Speicherdatei gewählt. Die Notation bleibt bis zum Löschen in der Anwendung."
+                TextTrimming="CharacterEllipsis" />
+            <InfoBar
+                x:Name="RecordingStatus"
+                IsClosable="False"
+                IsOpen="True"
+                Message="Aktiviere das Mikrofon oben im App-Rahmen und starte anschließend die Aufnahme."
+                Severity="Informational" />
+        </StackPanel>
+    </Grid>
+</Page>

@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Cello (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Cello (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

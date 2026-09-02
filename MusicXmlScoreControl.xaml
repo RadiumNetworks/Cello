@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="Cello.Notation.MusicXmlScoreControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Canvas
+        x:Name="ScoreCanvas"
+        Width="960"
+        Height="190"
+        Background="White" />
+</UserControl>

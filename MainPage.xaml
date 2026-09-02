@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="Cello.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:audio="using:Cello.Audio"
+    xmlns:local="using:Cello"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:notation="using:Cello.Notation"
+    mc:Ignorable="d">
+
+    <Grid Padding="24" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <FontIcon
+                VerticalAlignment="Center"
+                FontSize="40"
+                Glyph="&#xE720;" />
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Style="{ThemeResource TitleTextBlockStyle}" Text="Cello-Tonerkennung" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="Mikrofonsignal, Tonhöhe und Notation in Echtzeit"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" />
+                <ColumnDefinition Width="1.15*" />
+            </Grid.ColumnDefinitions>
+
+            <Border
+                Padding="24"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="12">
+                <StackPanel VerticalAlignment="Center" Spacing="8">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Erkannter Celloton" />
+                    <TextBlock
+                        x:Name="DetectedNoteText"
+                        HorizontalAlignment="Center"
+                        FontSize="64"
+                        FontWeight="SemiBold"
+                        Text="–" />
+                    <TextBlock
+                        x:Name="FrequencyText"
+                        HorizontalAlignment="Center"
+                        FontSize="18"
+                        Text="Spiele einen einzelnen Ton" />
+                    <TextBlock
+                        x:Name="TuningText"
+                        HorizontalAlignment="Center"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="" />
+                    <notation:StaffNotationControl
+                        x:Name="StaffNotation"
+                        HorizontalAlignment="Center" />
+                    <ProgressBar
+                        x:Name="ConfidenceBar"
+                        Maximum="100"
+                        Minimum="0"
+                        Value="0" />
+                    <Button
+                        x:Name="ExportMusicXmlButton"
+                        HorizontalAlignment="Center"
+                        Click="ExportMusicXmlButton_Click"
+                        Content="Als MusicXML exportieren"
+                        IsEnabled="False" />
+                </StackPanel>
+            </Border>
+
+            <Border
+                Grid.Column="1"
+                Padding="20"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="12">
+                <StackPanel VerticalAlignment="Center" Spacing="12">
+                    <TextBlock
+                        Style="{ThemeResource SubtitleTextBlockStyle}"
+                        Text="Eingangssignal" />
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="72" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center" Text="Lautstärke" />
+                        <ProgressBar
+                            x:Name="VolumeBar"
+                            Grid.Column="1"
+                            Maximum="60"
+                            Minimum="0"
+                            Value="0" />
+                        <TextBlock
+                            x:Name="VolumeText"
+                            Grid.Column="2"
+                            HorizontalAlignment="Right"
+                            Text="−∞ dBFS" />
+                    </Grid>
+
+                    <TextBlock
+                        x:Name="PeakText"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Peak: −∞ dBFS" />
+
+                    <audio:AudioSpectrumControl x:Name="AudioSpectrum" />
+
+                    <InfoBar
+                        x:Name="AnalysisStatus"
+                        IsClosable="False"
+                        IsOpen="True"
+                        Message="Aktiviere das Mikrofon, um das Eingangssignal zu prüfen."
+                        Severity="Informational" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <InfoBar
+            x:Name="MicrophoneStatus"
+            Grid.Row="2"
+            IsClosable="False"
+            IsOpen="True"
+            Message="Das Mikrofon kann oben im App-Rahmen aktiviert werden."
+            Severity="Informational" />
+    </Grid>
+</Page>
