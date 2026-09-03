@@ -1,0 +1,5 @@
+.player-page { display: grid; grid-template-rows: auto minmax(620px, calc(100vh - 220px)); gap: 20px; min-width: 720px; }
+.player-page header span { color: #50d3b5; font-size: .72rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.player-page h1 { margin: 3px 0 4px; color: #f0f5f7; font-family: Georgia, serif; font-size: clamp(2rem, 4vw, 3.35rem); font-weight: 500; }
+.player-page p { margin: 0; color: #8394a1; }
+.player-page__score { min-height: 620px; overflow: hidden; background: linear-gradient(145deg, rgba(24, 32, 43, .98), rgba(13, 19, 27, .98)); border: 1px solid rgba(150, 171, 194, .22); border-radius: 18px; box-shadow: 0 18px 45px rgba(0, 0, 0, .26); }

@@ -1,0 +1,8 @@
+<figure class="image-widget">
+    <img src="@ImageSource" alt="@AlternativeText" />
+</figure>
+
+@code {
+    [Parameter, EditorRequired] public string ImageSource { get; set; } = string.Empty;
+    [Parameter] public string AlternativeText { get; set; } = string.Empty;
+}

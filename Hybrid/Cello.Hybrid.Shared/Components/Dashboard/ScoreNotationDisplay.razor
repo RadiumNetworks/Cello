@@ -1,0 +1,779 @@
+@using Cello.Notation
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@if (Score is null)
+{
+    <div class="score-empty">Eine MusicXML-Datei laden, um die Partitur anzuzeigen.</div>
+}
+else
+{
+    BeamRenderState beamState = BuildBeamRenderState();
+    <div class="score-scroll" @ref="scoreContainer">
+        <svg class="score" viewBox="@Invariant($"0 0 {ScoreWidth} {SvgHeight}")" role="img" aria-label="Interaktive MusicXML-Partitur">
+            @for (int system = 0; system < SystemCount; system++)
+            {
+                double top = StaffTop(system);
+                <g class="clef">@SvgText(43, top + 57, "𝄢")</g>
+                @foreach (KeyAccidental accidental in KeySignatureAccidentals(top))
+                {
+                    <g class="key-signature">@SvgText(accidental.X, accidental.Y, accidental.Symbol)</g>
+                }
+                <g class="time-signature">@SvgText(TimeSignatureX, top + 31, Score.Beats)</g>
+                <g class="time-signature">@SvgText(TimeSignatureX, top + 56, Score.BeatType)</g>
+                @for (int line = 0; line < 5; line++)
+                {
+                    <line class="staff-line" x1="40" y1="@Number(top + line * 16)" x2="@Number(ScoreWidth - 40)" y2="@Number(top + line * 16)" />
+                }
+            }
+
+            @foreach (MeasureMarker marker in MeasureMarkers)
+            {
+                <line class="measure-line" x1="@Number(marker.X)" y1="@Number(marker.Top)" x2="@Number(marker.X)" y2="@Number(marker.Top + 64)" />
+                <g class="measure-number">@SvgText(marker.X + 4, marker.Top - 7, (marker.MeasureIndex + 1).ToString())</g>
+            }
+
+            @foreach (ConnectionArc arc in ConnectionArcs)
+            {
+                <path class="@arc.CssClass" d="@arc.Path" />
+            }
+
+            @foreach (WedgeVisual wedge in BuildWedgeVisuals(beamState))
+            {
+                <path class="wedge" d="@wedge.Path" />
+            }
+
+            @foreach (BeamVisual beam in beamState.Visuals)
+            {
+                <path class="beam beam-@beam.Level" d="@beam.Path" />
+            }
+
+            @foreach (DirectiveVisual directive in BuildDirectiveVisuals(beamState))
+            {
+                <g class="directive @directive.CssClass">@SvgText(directive.X, directive.Y, directive.Text)</g>
+            }
+
+            @foreach ((RecordedTone tone, int index) in Score.Tones.Select((tone, index) => (tone, index)))
+            {
+                (double x, double y) = Position(index, tone.Pitch.MidiNote);
+                bool stemUp = StemUp(index, tone, beamState);
+                double stemX = stemUp ? x + 10 : x - 10;
+                double stemEndY = StemEndY(index, y, stemUp, beamState);
+                bool renderStem = !tone.IsChordContinuation;
+                string classes = NoteClasses(index, tone);
+                <g class="score-note @classes" role="button" tabindex="0"
+                   aria-label="@ToneAriaLabel(index, tone)"
+                   @onclick="() => ToneSelected.InvokeAsync(index)"
+                   @onkeydown="args => HandleKey(args, index)">
+                    <title>@ToneAriaLabel(index, tone)</title>
+                    @foreach (double ledgerY in LedgerLines(index, y))
+                    {
+                        <line class="ledger-line" x1="@Number(x - 16)" y1="@Number(ledgerY)" x2="@Number(x + 16)" y2="@Number(ledgerY)" />
+                    }
+                    <ellipse class="note-head @(IsOpenHead(tone.NoteValue) ? "open" : null)"
+                             cx="@Number(x)" cy="@Number(y)" rx="11" ry="7" transform="@Invariant($"rotate(-12 {x} {y})")" />
+                    @if (renderStem && tone.NoteValue != NotationNoteValue.Whole)
+                    {
+                        <line class="stem" x1="@Number(stemX)" y1="@Number(y)" x2="@Number(stemX)" y2="@Number(stemEndY)" />
+                    }
+                    @for (int flag = 0; renderStem && flag < (tone.Beams.Count == 0 ? FlagCount(tone.NoteValue) : 0); flag++)
+                    {
+                        double flagY = stemUp ? stemEndY + flag * 9 : stemEndY - flag * 9;
+                        string flagPath = FlagPath(stemX, flagY, stemUp);
+                        <path class="flag" d="@flagPath" />
+                    }
+                    @for (int dot = 0; dot < tone.DotCount; dot++)
+                    {
+                        <circle class="duration-dot" cx="@Number(x + 18 + dot * 8)" cy="@Number(y - 1)" r="2.3" />
+                    }
+                    @if (tone.IsStaccato)
+                    {
+                        <circle class="articulation" cx="@Number(x)" cy="@Number(stemUp ? y + 15 : y - 15)" r="2.5" />
+                    }
+                    @if (tone.TupletStarts && tone.TupletActualNotes > 0)
+                    {
+                        <g class="tuplet">@SvgText(x, stemUp ? stemEndY - 7 : stemEndY + 13, tone.TupletActualNotes.ToString())</g>
+                    }
+                    @if (ShowNoteNames)
+                    {
+                        <g class="pitch-label">@SvgText(x, StaffTop(SystemOf(index)) + 121, tone.DisplayNoteName)</g>
+                    }
+                </g>
+            }
+        </svg>
+    </div>
+}
+
+@code {
+    private const double SystemHeight = 190;
+    private const double StaffLineSpacing = 16;
+    private const double NoteHeadRadiusY = 7;
+    private const double MinimumMeasureWidth = 118;
+    private const double MinimumNoteSpacing = 42;
+    private ElementReference scoreContainer;
+    private IJSObjectReference? resizeModule;
+    private DotNetObjectReference<ScoreNotationDisplay>? selfReference;
+    private double containerWidth = 900;
+    private LayoutMap? layout;
+    private MusicXmlScore? layoutScore;
+    private double layoutWidth;
+    private int lastScrolledSystem = -1;
+    [Parameter] public MusicXmlScore? Score { get; set; }
+    [Parameter] public int PlayingIndex { get; set; } = -1;
+    [Parameter] public int? RangeStartIndex { get; set; }
+    [Parameter] public int? RangeEndIndex { get; set; }
+    [Parameter] public bool ShowPitchColors { get; set; } = true;
+    [Parameter] public bool ShowNoteNames { get; set; } = true;
+    [Parameter] public EventCallback<int> ToneSelected { get; set; }
+
+    private double ScoreWidth => Math.Max(720, containerWidth);
+    private LayoutMap Layout => GetLayout();
+    private int SystemCount => Layout.SystemCount;
+    private double SvgHeight => SystemCount * SystemHeight;
+    private IEnumerable<MeasureMarker> MeasureMarkers => BuildMeasureMarkers();
+    private IEnumerable<ConnectionArc> ConnectionArcs => BuildConnectionArcs();
+    private int KeyAccidentalCount => Math.Abs(Score?.KeyFifths ?? 0);
+    private double TimeSignatureX => 91 + KeyAccidentalCount * 10;
+    private double NotationStartX => 125 + KeyAccidentalCount * 10;
+
+    private static double StaffTop(int system) => 28 + system * SystemHeight;
+
+    private (double X, double Y) Position(int index, int midiNote)
+    {
+        int positionIndex = index;
+        while (positionIndex > 0 && Score?.Tones[positionIndex].IsChordContinuation == true) positionIndex--;
+        TonePlacement placement = Layout.Tones[positionIndex];
+        int system = placement.System;
+        double x = placement.X;
+        // In bass clef, C4 is the ledger line immediately above the staff.
+        double y = Math.Clamp(StaffTop(system) - 16 - DiatonicStepsFromC4(midiNote) * 8,
+            StaffTop(system) - 24, StaffTop(system) + 96);
+        return (x, y);
+    }
+
+    private int SystemOf(int index) => Layout.Tones[index].System;
+
+    private static int DiatonicStepsFromC4(int midiNote)
+    {
+        int octave = midiNote / 12 - 1;
+        int pitchClass = ((midiNote % 12) + 12) % 12;
+        int step = pitchClass switch
+        {
+            0 or 1 => 0,
+            2 or 3 => 1,
+            4 => 2,
+            5 or 6 => 3,
+            7 or 8 => 4,
+            9 or 10 => 5,
+            _ => 6
+        };
+        return (octave - 4) * 7 + step;
+    }
+
+    private IEnumerable<KeyAccidental> KeySignatureAccidentals(double staffTop)
+    {
+        if (Score is null || Score.KeyFifths == 0) yield break;
+
+        // Standard bass-clef key-signature positions, expressed as offsets
+        // from the top staff line in the order defined by MusicXML fifths.
+        double[] offsets = Score.KeyFifths > 0
+            ? [16, 40, 8, 32, 0, 24, -8]   // F C G D A E B sharps
+            : [48, 24, 56, 32, 64, 40, 72]; // B E A D G C F flats
+        string symbol = Score.KeyFifths > 0 ? "♯" : "♭";
+        for (int index = 0; index < KeyAccidentalCount; index++)
+        {
+            yield return new KeyAccidental(73 + index * 10, staffTop + offsets[index], symbol);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (resizeModule is null && Score is not null)
+        {
+            resizeModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/Cello.Hybrid.Shared/scoreNotation.js");
+            selfReference = DotNetObjectReference.Create(this);
+            await resizeModule.InvokeVoidAsync("observeSize", scoreContainer, selfReference);
+        }
+
+        if (resizeModule is not null && Score is { Tones.Count: > 0 } &&
+            PlayingIndex >= 0 && PlayingIndex < Score.Tones.Count)
+        {
+            int playingSystem = SystemOf(PlayingIndex);
+            if (playingSystem != lastScrolledSystem)
+            {
+                lastScrolledSystem = playingSystem;
+                await resizeModule.InvokeVoidAsync("scrollPlayingSystemIntoView", scoreContainer);
+            }
+        }
+        else if (PlayingIndex < 0)
+        {
+            lastScrolledSystem = -1;
+        }
+    }
+
+    [JSInvokable]
+    public Task OnScoreWidthChanged(double width)
+    {
+        double normalized = Math.Max(360, width);
+        if (Math.Abs(normalized - containerWidth) < 8) return Task.CompletedTask;
+        containerWidth = normalized;
+        layout = null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private LayoutMap GetLayout()
+    {
+        if (layout is not null && ReferenceEquals(layoutScore, Score) && Math.Abs(layoutWidth - ScoreWidth) < 1)
+        {
+            return layout;
+        }
+
+        layoutScore = Score;
+        layoutWidth = ScoreWidth;
+        layout = BuildLayout();
+        return layout;
+    }
+
+    private LayoutMap BuildLayout()
+    {
+        if (Score is null || Score.Tones.Count == 0)
+        {
+            return new LayoutMap(Array.Empty<TonePlacement>(), Array.Empty<MeasurePlacement>(), 1);
+        }
+
+        double left = NotationStartX;
+        double right = ScoreWidth - 40;
+        double available = Math.Max(MinimumMeasureWidth, right - left);
+        var measureToneIndices = Enumerable.Range(0, Score.MeasureCount)
+            .Select(measure => Score.Tones.Select((tone, index) => (tone, index))
+                .Where(item => item.tone.MeasureIndex == measure)
+                .Select(item => item.index)
+                .ToList())
+            .ToList();
+        double[] desiredWidths = measureToneIndices
+            .Select(indices => Math.Max(MinimumMeasureWidth,
+                indices.Count(index => !Score.Tones[index].IsChordContinuation) * MinimumNoteSpacing + 24))
+            .ToArray();
+        var systems = new List<List<int>>();
+        var current = new List<int>();
+        double used = 0;
+        for (int measure = 0; measure < Score.MeasureCount; measure++)
+        {
+            double desired = Math.Min(available, desiredWidths[measure]);
+            if (current.Count > 0 && used + desired > available)
+            {
+                systems.Add(current);
+                current = [];
+                used = 0;
+            }
+            current.Add(measure);
+            used += desired;
+        }
+        if (current.Count > 0) systems.Add(current);
+
+        var tonePlacements = new TonePlacement[Score.Tones.Count];
+        var measurePlacements = new MeasurePlacement[Score.MeasureCount];
+        for (int system = 0; system < systems.Count; system++)
+        {
+            IReadOnlyList<int> measures = systems[system];
+            double totalDesired = measures.Sum(measure => Math.Min(available, desiredWidths[measure]));
+            double scale = available / Math.Max(1, totalDesired);
+            double measureX = left;
+            foreach (int measure in measures)
+            {
+                double width = Math.Min(available, desiredWidths[measure]) * scale;
+                measurePlacements[measure] = new MeasurePlacement(system, measureX, width);
+                IReadOnlyList<int> indices = measureToneIndices[measure];
+                int eventCount = Math.Max(1, indices.Count(index => !Score.Tones[index].IsChordContinuation));
+                int eventPosition = -1;
+                for (int position = 0; position < indices.Count; position++)
+                {
+                    if (!Score.Tones[indices[position]].IsChordContinuation) eventPosition++;
+                    double x = Math.Round(measureX + width * (eventPosition + 0.5) / eventCount);
+                    tonePlacements[indices[position]] = new TonePlacement(system, x);
+                }
+                measureX += width;
+                measureX = Math.Round(measureX);
+            }
+        }
+
+        return new LayoutMap(tonePlacements, measurePlacements, Math.Max(1, systems.Count));
+    }
+
+    private string NoteClasses(int index, RecordedTone tone)
+    {
+        var classes = new List<string>();
+        if (ShowPitchColors) classes.Add($"pitch-{tone.Pitch.MidiNote % 12}");
+        if (IsInPlayingEvent(index)) classes.Add("playing");
+        if (index == RangeStartIndex) classes.Add("range-start");
+        if (index == RangeEndIndex) classes.Add("range-end");
+        if (RangeStartIndex is int start && RangeEndIndex is int end && index >= start && index <= end) classes.Add("in-range");
+        return string.Join(' ', classes);
+    }
+
+    private bool IsInPlayingEvent(int index)
+    {
+        if (Score is null || PlayingIndex < 0) return false;
+        int start = PlayingIndex;
+        while (start > 0 && Score.Tones[start].IsChordContinuation) start--;
+        int end = start + 1;
+        while (end < Score.Tones.Count && Score.Tones[end].IsChordContinuation) end++;
+        return index >= start && index < end;
+    }
+
+    private static bool IsOpenHead(NotationNoteValue value) => value is NotationNoteValue.Whole or NotationNoteValue.Half;
+
+    private static int FlagCount(NotationNoteValue value) => value switch
+    {
+        NotationNoteValue.Eighth => 1,
+        NotationNoteValue.Sixteenth => 2,
+        NotationNoteValue.ThirtySecond => 3,
+        NotationNoteValue.SixtyFourth => 4,
+        _ => 0
+    };
+
+    private static string FlagPath(double x, double y, bool stemUp) => stemUp
+        ? Invariant($"M {x} {y} C {x + 17} {y + 7}, {x + 18} {y + 18}, {x + 8} {y + 27}")
+        : Invariant($"M {x} {y} C {x - 17} {y - 7}, {x - 18} {y - 18}, {x - 8} {y - 27}");
+
+    private IEnumerable<double> LedgerLines(int index, double y)
+    {
+        double top = StaffTop(SystemOf(index));
+        for (double lineY = top - 16; lineY >= y - 1; lineY -= 16) yield return lineY;
+        for (double lineY = top + 80; lineY <= y + 1; lineY += 16) yield return lineY;
+    }
+
+    private BeamRenderState BuildBeamRenderState()
+    {
+        if (Score is null) return BeamRenderState.Empty;
+
+        var stemLayouts = new Dictionary<int, StemLayout>();
+        var visuals = new List<BeamVisual>();
+        foreach (IReadOnlyList<int> group in BeamGroups(1))
+        {
+            foreach (IReadOnlyList<int> systemGroup in SplitBySystem(group))
+            {
+                BeamLine line = CreateBeamLine(systemGroup);
+                foreach (int index in systemGroup)
+                {
+                    double x = StemX(index, line.StemUp);
+                    stemLayouts[index] = new StemLayout(line.StemUp, line.YAt(x));
+                }
+                visuals.Add(CreateBeamVisual(group, systemGroup, 1, line, 0));
+            }
+        }
+
+        int maximumLevel = Score.Tones.SelectMany(tone => tone.Beams).Select(beam => beam.Number).DefaultIfEmpty(0).Max();
+        for (int level = 2; level <= maximumLevel; level++)
+        {
+            foreach (IReadOnlyList<int> group in BeamGroups(level))
+            {
+                foreach (IReadOnlyList<int> systemGroup in SplitBySystem(group))
+                {
+                    BeamLine line = BeamLineFor(systemGroup, stemLayouts);
+                    double offset = line.StemUp ? (level - 1) * 8 : -(level - 1) * 8;
+                    visuals.Add(CreateBeamVisual(group, systemGroup, level, line, offset));
+                }
+            }
+        }
+
+        for (int index = 0; index < Score.Tones.Count; index++)
+        {
+            foreach (NotationBeam hook in Score.Tones[index].Beams.Where(beam =>
+                beam.Type is NotationBeamType.ForwardHook or NotationBeamType.BackwardHook))
+            {
+                bool stemUp = stemLayouts.TryGetValue(index, out StemLayout? stem)
+                    ? stem.StemUp : ResolveStemUp(Score.Tones[index], index);
+                double x = StemX(index, stemUp);
+                double y = stem?.EndY ?? DefaultStemEndY(index, stemUp);
+                double offset = stemUp ? (hook.Number - 1) * 8 : -(hook.Number - 1) * 8;
+                double direction = hook.Type == NotationBeamType.ForwardHook ? 1 : -1;
+                string path = BeamPath(x, y + offset, x + direction * 24, y + offset);
+                visuals.Add(new BeamVisual(path, hook.Number));
+            }
+        }
+
+        return new BeamRenderState(stemLayouts, visuals);
+    }
+
+    private IEnumerable<IReadOnlyList<int>> BeamGroups(int level)
+    {
+        if (Score is null) yield break;
+        List<int>? current = null;
+        for (int index = 0; index < Score.Tones.Count; index++)
+        {
+            if (Score.Tones[index].IsChordContinuation) continue;
+            NotationBeam? beam = Score.Tones[index].Beams.FirstOrDefault(item => item.Number == level);
+            if (beam is null)
+            {
+                if (current is { Count: > 1 }) yield return current;
+                current = null;
+                continue;
+            }
+
+            switch (beam.Type)
+            {
+                case NotationBeamType.Begin:
+                    if (current is { Count: > 1 }) yield return current;
+                    current = [index];
+                    break;
+                case NotationBeamType.Continue:
+                    current ??= [];
+                    current.Add(index);
+                    break;
+                case NotationBeamType.End:
+                    current ??= [];
+                    current.Add(index);
+                    if (current.Count > 1) yield return current;
+                    current = null;
+                    break;
+                default:
+                    if (current is { Count: > 1 }) yield return current;
+                    current = null;
+                    break;
+            }
+        }
+        if (current is { Count: > 1 }) yield return current;
+    }
+
+    private IEnumerable<IReadOnlyList<int>> SplitBySystem(IReadOnlyList<int> group)
+    {
+        foreach (IGrouping<int, int> system in group.GroupBy(SystemOf))
+        {
+            yield return system.ToList();
+        }
+    }
+
+    private BeamLine CreateBeamLine(IReadOnlyList<int> indices)
+    {
+        if (Score is null) throw new InvalidOperationException();
+        bool stemUp = ResolveGroupStemUp(indices);
+        int first = indices[0];
+        int last = indices[^1];
+        double x1 = StemX(first, stemUp);
+        double x2 = StemX(last, stemUp);
+        double firstHeadY = Position(first, Score.Tones[first].Pitch.MidiNote).Y;
+        double lastHeadY = Position(last, Score.Tones[last].Pitch.MidiNote).Y;
+        double slope = x2 == x1 ? 0 : Math.Clamp((lastHeadY - firstHeadY) / (x2 - x1), -0.12, 0.12);
+        double y1 = firstHeadY + (stemUp ? -40 : 40);
+
+        foreach (int index in indices)
+        {
+            double x = StemX(index, stemUp);
+            double currentY = y1 + slope * (x - x1);
+            IEnumerable<double> chordHeadYs = ChordIndices(index)
+                .Select(chordIndex => Position(chordIndex, Score.Tones[chordIndex].Pitch.MidiNote).Y);
+            double nearestHeadEdge = stemUp
+                ? chordHeadYs.Min() - NoteHeadRadiusY
+                : chordHeadYs.Max() + NoteHeadRadiusY;
+            double requiredY = nearestHeadEdge + (stemUp ? -StaffLineSpacing : StaffLineSpacing);
+            if (stemUp && currentY > requiredY) y1 -= currentY - requiredY;
+            if (!stemUp && currentY < requiredY) y1 += requiredY - currentY;
+        }
+
+        return new BeamLine(stemUp, x1, y1, slope);
+    }
+
+    private IEnumerable<int> ChordIndices(int rootIndex)
+    {
+        if (Score is null) yield break;
+        yield return rootIndex;
+        for (int index = rootIndex + 1; index < Score.Tones.Count && Score.Tones[index].IsChordContinuation; index++)
+        {
+            yield return index;
+        }
+    }
+
+    private BeamLine BeamLineFor(IReadOnlyList<int> indices, IReadOnlyDictionary<int, StemLayout> stemLayouts)
+    {
+        int first = indices[0];
+        int last = indices[^1];
+        if (stemLayouts.TryGetValue(first, out StemLayout? firstStem) &&
+            stemLayouts.TryGetValue(last, out StemLayout? lastStem))
+        {
+            double x1 = StemX(first, firstStem.StemUp);
+            double x2 = StemX(last, firstStem.StemUp);
+            double slope = x2 == x1 ? 0 : (lastStem.EndY - firstStem.EndY) / (x2 - x1);
+            return new BeamLine(firstStem.StemUp, x1, firstStem.EndY, slope);
+        }
+        return CreateBeamLine(indices);
+    }
+
+    private bool ResolveGroupStemUp(IReadOnlyList<int> indices)
+    {
+        if (Score is null) return true;
+        RecordedTone? explicitTone = indices.Select(index => Score.Tones[index])
+            .FirstOrDefault(tone => tone.StemDirection != NotationStemDirection.Automatic);
+        if (explicitTone is not null) return explicitTone.StemDirection == NotationStemDirection.Up;
+        return indices.Average(index => Position(index, Score.Tones[index].Pitch.MidiNote).Y) >=
+                StaffTop(SystemOf(indices[0])) + 32;
+    }
+
+            private bool ResolveStemUp(RecordedTone tone, int index) => tone.StemDirection switch
+    {
+        NotationStemDirection.Up => true,
+        NotationStemDirection.Down => false,
+        _ => Position(index, tone.Pitch.MidiNote).Y >= StaffTop(SystemOf(index)) + 32
+    };
+
+    private double StemX(int index, bool stemUp)
+    {
+        double x = Position(index, 60).X;
+        return x + (stemUp ? 10 : -10);
+    }
+
+    private double DefaultStemEndY(int index, bool stemUp)
+    {
+        if (Score is null) return 0;
+        double headY = Position(index, Score.Tones[index].Pitch.MidiNote).Y;
+        return headY + (stemUp ? -40 : 40);
+    }
+
+    private bool StemUp(int index, RecordedTone tone, BeamRenderState beamState) =>
+        beamState.Stems.TryGetValue(index, out StemLayout? stem) ? stem.StemUp : ResolveStemUp(tone, index);
+
+    private static double StemEndY(int index, double headY, bool stemUp, BeamRenderState beamState) =>
+        beamState.Stems.TryGetValue(index, out StemLayout? stem) ? stem.EndY : headY + (stemUp ? -40 : 40);
+
+    private BeamVisual CreateBeamVisual(
+        IReadOnlyList<int> completeGroup,
+        IReadOnlyList<int> systemGroup,
+        int level,
+        BeamLine line,
+        double offset)
+    {
+        int start = systemGroup[0];
+        int end = systemGroup[^1];
+        double x1 = start == completeGroup[0] ? StemX(start, line.StemUp) : 42;
+        double x2 = end == completeGroup[^1] ? StemX(end, line.StemUp) : ScoreWidth - 42;
+        return new BeamVisual(BeamPath(x1, line.YAt(x1) + offset, x2, line.YAt(x2) + offset), level);
+    }
+
+    private static string BeamPath(double x1, double y1, double x2, double y2) =>
+        Invariant($"M {x1} {y1} L {x2} {y2}");
+
+    private IEnumerable<MeasureMarker> BuildMeasureMarkers()
+    {
+        if (Score is null) yield break;
+        int previousMeasure = -1;
+        for (int index = 0; index < Score.Tones.Count; index++)
+        {
+            RecordedTone tone = Score.Tones[index];
+            if (tone.MeasureIndex == previousMeasure) continue;
+            (double x, _) = Position(index, tone.Pitch.MidiNote);
+            yield return new MeasureMarker(Layout.Measures[tone.MeasureIndex].StartX, StaffTop(SystemOf(index)), tone.MeasureIndex);
+            previousMeasure = tone.MeasureIndex;
+        }
+    }
+
+    private IEnumerable<ConnectionArc> BuildConnectionArcs()
+    {
+        if (Score is null) yield break;
+        for (int start = 0; start < Score.Tones.Count; start++)
+        {
+            RecordedTone tone = Score.Tones[start];
+            if (tone.TieStarts)
+            {
+                int end = FindConnectionEnd(start, candidate => candidate.TieStops && candidate.Pitch.MidiNote == tone.Pitch.MidiNote);
+                foreach (ConnectionArc arc in CreateArcs(start, end, "tie", 15)) yield return arc;
+            }
+            if (tone.SlurStarts)
+            {
+                int end = FindConnectionEnd(start, candidate => candidate.SlurStops);
+                foreach (ConnectionArc arc in CreateArcs(start, end, "slur", 26)) yield return arc;
+            }
+        }
+    }
+
+    private int FindConnectionEnd(int start, Func<RecordedTone, bool> predicate)
+    {
+        if (Score is null) return -1;
+        for (int index = start + 1; index < Score.Tones.Count; index++)
+        {
+            if (predicate(Score.Tones[index])) return index;
+        }
+        return -1;
+    }
+
+    private IEnumerable<ConnectionArc> CreateArcs(int start, int end, string cssClass, double depth)
+    {
+        if (Score is null || end <= start) yield break;
+        (double startX, double startY) = Position(start, Score.Tones[start].Pitch.MidiNote);
+        (double endX, double endY) = Position(end, Score.Tones[end].Pitch.MidiNote);
+        int startSystem = SystemOf(start);
+        int endSystem = SystemOf(end);
+
+        if (startSystem == endSystem)
+        {
+            yield return new ConnectionArc(ArcPath(startX + 7, startY + 9, endX - 7, endY + 9, depth), cssClass);
+            yield break;
+        }
+
+        yield return new ConnectionArc(ArcPath(startX + 7, startY + 9, ScoreWidth - 44, StaffTop(startSystem) + 73, depth), cssClass);
+        for (int system = startSystem + 1; system < endSystem; system++)
+        {
+            yield return new ConnectionArc(ArcPath(44, StaffTop(system) + 73, ScoreWidth - 44, StaffTop(system) + 73, depth), cssClass);
+        }
+        yield return new ConnectionArc(ArcPath(44, StaffTop(endSystem) + 73, endX - 7, endY + 9, depth), cssClass);
+    }
+
+    private static string ArcPath(double x1, double y1, double x2, double y2, double depth)
+    {
+        double controlX = (x1 + x2) / 2;
+        double controlY = Math.Max(y1, y2) + depth;
+        return Invariant($"M {x1} {y1} Q {controlX} {controlY} {x2} {y2}");
+    }
+
+    private IEnumerable<DirectiveVisual> BuildDirectiveVisuals(BeamRenderState beamState)
+    {
+        if (Score is null) yield break;
+        foreach (MusicXmlDirective directive in Score.Directives.Where(item =>
+            item.Kind is MusicXmlDirectiveKind.Dynamic or MusicXmlDirectiveKind.Words))
+        {
+            int index = DirectiveToneIndex(directive);
+            if (index < 0) continue;
+            (double x, _) = Position(index, Score.Tones[index].Pitch.MidiNote);
+            double top = StaffTop(SystemOf(index));
+            double y = OutsideBeamY(index, x, directive.Placement, beamState,
+                aboveDefault: top - 9, belowDefault: top + 145, clearance: 25);
+            string cssClass = directive.Kind == MusicXmlDirectiveKind.Dynamic ? "dynamic" : "words";
+            yield return new DirectiveVisual(x, y, directive.Value, cssClass);
+        }
+    }
+
+    private IEnumerable<WedgeVisual> BuildWedgeVisuals(BeamRenderState beamState)
+    {
+        if (Score is null) yield break;
+        List<MusicXmlDirective> wedges = Score.Directives.Where(item => item.Kind == MusicXmlDirectiveKind.Wedge).ToList();
+        for (int i = 0; i < wedges.Count; i++)
+        {
+            MusicXmlDirective start = wedges[i];
+            if (start.Value is not ("crescendo" or "diminuendo")) continue;
+            MusicXmlDirective? stop = wedges.Skip(i + 1).FirstOrDefault(item => item.Number == start.Number && item.Value == "stop");
+            int startIndex = DirectiveToneIndex(start);
+            int endIndex = stop is null ? Math.Min(startIndex + 3, Score.Tones.Count - 1) : DirectiveToneIndex(stop);
+            if (startIndex < 0 || endIndex < startIndex || SystemOf(startIndex) != SystemOf(endIndex)) continue;
+            (double x1, _) = Position(startIndex, Score.Tones[startIndex].Pitch.MidiNote);
+            (double x2, _) = Position(endIndex, Score.Tones[endIndex].Pitch.MidiNote);
+            double top = StaffTop(SystemOf(startIndex));
+            string placement = start.Placement == "above" ? "above" : "below";
+            double y = OutsideBeamY(startIndex, (x1 + x2) / 2, placement, beamState,
+                aboveDefault: top - 15, belowDefault: top + 151, clearance: 18);
+            double opening = 7;
+            string path = start.Value == "crescendo"
+                ? Invariant($"M {x1} {y} L {x2} {y - opening} M {x1} {y} L {x2} {y + opening}")
+                : Invariant($"M {x1} {y - opening} L {x2} {y} M {x1} {y + opening} L {x2} {y}");
+            yield return new WedgeVisual(path);
+        }
+    }
+
+    private double OutsideBeamY(
+        int toneIndex,
+        double x,
+        string placement,
+        BeamRenderState beamState,
+        double aboveDefault,
+        double belowDefault,
+        double clearance)
+    {
+        int system = SystemOf(toneIndex);
+        double[] nearbyBeamYs = beamState.Stems
+            .Where(pair => SystemOf(pair.Key) == system && Math.Abs(StemX(pair.Key, pair.Value.StemUp) - x) <= MinimumMeasureWidth)
+            .Select(pair => pair.Value.EndY)
+            .ToArray();
+        if (nearbyBeamYs.Length == 0) return placement == "above" ? aboveDefault : belowDefault;
+
+        return placement == "above"
+            ? Math.Min(aboveDefault, nearbyBeamYs.Min() - clearance)
+            : Math.Max(belowDefault, nearbyBeamYs.Max() + clearance);
+    }
+
+    private int DirectiveToneIndex(MusicXmlDirective directive)
+    {
+        if (Score is null || Score.Tones.Count == 0) return -1;
+        int first = -1;
+        int count = 0;
+        for (int index = 0; index < Score.Tones.Count; index++)
+        {
+            if (Score.Tones[index].MeasureIndex != directive.MeasureIndex) continue;
+            if (first < 0) first = index;
+            count++;
+        }
+        if (first < 0) return -1;
+        return first + Math.Clamp(directive.ToneIndex, 0, Math.Max(0, count - 1));
+    }
+
+    private static string ToneAriaLabel(int index, RecordedTone tone)
+    {
+        var details = new List<string> { $"Note {index + 1}", tone.DisplayNoteName, NoteValueName(tone.NoteValue) };
+        if (tone.DotCount > 0) details.Add(tone.DotCount == 1 ? "punktiert" : $"{tone.DotCount}-fach punktiert");
+        if (tone.IsStaccato) details.Add("staccato");
+        if (tone.TieStarts || tone.TieStops) details.Add("gebunden");
+        return string.Join(", ", details);
+    }
+
+    private static string NoteValueName(NotationNoteValue value) => value switch
+    {
+        NotationNoteValue.Whole => "ganze Note",
+        NotationNoteValue.Half => "halbe Note",
+        NotationNoteValue.Quarter => "Viertelnote",
+        NotationNoteValue.Eighth => "Achtelnote",
+        NotationNoteValue.Sixteenth => "Sechzehntelnote",
+        NotationNoteValue.ThirtySecond => "Zweiunddreißigstelnote",
+        NotationNoteValue.SixtyFourth => "Vierundsechzigstelnote",
+        _ => "Note"
+    };
+
+    private static string Invariant(FormattableString value) => FormattableString.Invariant(value);
+
+    private static string Number(double value) => value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static MarkupString SvgText(double x, double y, string text)
+    {
+        string encoded = System.Net.WebUtility.HtmlEncode(text);
+        return new MarkupString(Invariant($"<text x=\"{x}\" y=\"{y}\">{encoded}</text>"));
+    }
+
+    private Task HandleKey(KeyboardEventArgs args, int index) =>
+        args.Key is "Enter" or " " ? ToneSelected.InvokeAsync(index) : Task.CompletedTask;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (resizeModule is not null)
+        {
+            try
+            {
+                await resizeModule.InvokeVoidAsync("stopObserving", scoreContainer);
+                await resizeModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+        selfReference?.Dispose();
+    }
+
+    private sealed record MeasureMarker(double X, double Top, int MeasureIndex);
+    private sealed record ConnectionArc(string Path, string CssClass);
+    private sealed record DirectiveVisual(double X, double Y, string Text, string CssClass);
+    private sealed record WedgeVisual(string Path);
+    private sealed record KeyAccidental(double X, double Y, string Symbol);
+    private sealed record BeamVisual(string Path, int Level);
+    private sealed record StemLayout(bool StemUp, double EndY);
+    private sealed record BeamLine(bool StemUp, double X, double Y, double Slope)
+    {
+        public double YAt(double x) => Y + Slope * (x - X);
+    }
+    private sealed record BeamRenderState(IReadOnlyDictionary<int, StemLayout> Stems, IReadOnlyList<BeamVisual> Visuals)
+    {
+        public static BeamRenderState Empty { get; } = new(
+            new Dictionary<int, StemLayout>(), Array.Empty<BeamVisual>());
+    }
+    private sealed record TonePlacement(int System, double X);
+    private sealed record MeasurePlacement(int System, double StartX, double Width);
+    private sealed record LayoutMap(
+        IReadOnlyList<TonePlacement> Tones,
+        IReadOnlyList<MeasurePlacement> Measures,
+        int SystemCount);
+}

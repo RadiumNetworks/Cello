@@ -1,0 +1,104 @@
+@using Cello.Notation
+@using Cello.Hybrid.Shared.Services
+@inject ScorePlaybackService Player
+@implements IDisposable
+
+<div class="score-player">
+    <div class="score-player__toolbar">
+        <label class="score-player__file">
+            <span>MusicXML laden</span>
+            <InputFile OnChange="LoadFileAsync" accept=".musicxml,.xml,application/vnd.recordare.musicxml+xml,application/xml,text/xml" />
+        </label>
+
+        <button type="button" disabled="@(!CanPlay)" @onclick="Player.TogglePlayback">
+            @(Player.IsPlaying ? "❚❚ Pause" : "▶ Abspielen")
+        </button>
+        <button type="button" disabled="@(Player.Score is null)" @onclick="Player.Stop">■ Stopp</button>
+        <label class="score-player__loop @(Player.IsRangeComplete ? null : "disabled")">
+            <input type="checkbox" checked="@Player.IsLooping" disabled="@(!Player.IsRangeComplete)" @onchange="ToggleLoop" />
+            Loop
+        </label>
+        <label class="score-player__tempo">
+            Tempo <input type="range" min="25" max="250" step="5" value="@Player.TempoPercent" disabled="@(Player.Score is null)" @oninput="ChangeTempo" />
+            <strong>@Player.TempoPercent.ToString("0") %</strong>
+        </label>
+        <label class="score-player__option">
+            <input type="checkbox" @bind="showPitchColors" />
+            Noten färben
+        </label>
+        <label class="score-player__option">
+            <input type="checkbox" @bind="showNoteNames" />
+            Notennamen
+        </label>
+        <button type="button" disabled="@(Player.RangeStartIndex is null)" @onclick="Player.ClearRange">Bereich löschen</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Player.ErrorMessage))
+    {
+        <div class="score-player__error" role="alert">@Player.ErrorMessage</div>
+    }
+
+    @if (Player.Score is { } score)
+    {
+        <div class="score-player__metadata">
+            <div><strong>@score.Title</strong><span>@score.Composer · @score.PartName</span></div>
+            <span>@score.MeasureCount Takte · @score.Tones.Count Töne · @score.KeySignatureText · @score.TimeSignatureText · @score.TempoText</span>
+        </div>
+        <div class="score-player__hint">@RangeHint</div>
+    }
+
+    <div class="score-player__score">
+        <ScoreNotationDisplay Score="Player.Score"
+                              PlayingIndex="Player.PlayingToneIndex"
+                              RangeStartIndex="Player.RangeStartIndex"
+                              RangeEndIndex="Player.RangeEndIndex"
+                              ShowPitchColors="showPitchColors"
+                              ShowNoteNames="showNoteNames"
+                              ToneSelected="Player.SelectTone" />
+    </div>
+</div>
+
+@code {
+    private const long MaximumFileSize = 10 * 1024 * 1024;
+    private bool showPitchColors = true;
+    private bool showNoteNames = true;
+    private bool CanPlay => Player.Score is { Tones.Count: > 0 };
+    private string RangeHint => Player.RangeStartIndex is null
+        ? "Eine Note als Startpunkt anklicken, danach eine zweite Note als Ende."
+        : Player.RangeEndIndex is null
+            ? "Start gesetzt – jetzt die Endnote anklicken."
+            : $"Übungsbereich: Note {Player.RangeStartIndex + 1} bis {Player.RangeEndIndex + 1}.";
+
+    protected override void OnInitialized() => Player.Updated += Player_Updated;
+
+    private async Task LoadFileAsync(InputFileChangeEventArgs args)
+    {
+        try
+        {
+            await using Stream stream = args.File.OpenReadStream(MaximumFileSize);
+            await Player.LoadAsync(stream, args.File.Name);
+        }
+        catch (IOException ex)
+        {
+            Player.ReportError($"Die Datei konnte nicht gelesen werden: {ex.Message}");
+        }
+    }
+
+    private void ToggleLoop(ChangeEventArgs args) => Player.SetLooping(args.Value is true || string.Equals(args.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase));
+
+    private void ChangeTempo(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double value))
+        {
+            Player.SetTempo(value);
+        }
+    }
+
+    private void Player_Updated(object? sender, EventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Player.Updated -= Player_Updated;
+        Player.Stop();
+    }
+}

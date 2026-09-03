@@ -1,0 +1,58 @@
+@using Cello.Audio
+
+<div class="spectrum-widget">
+    <div class="spectrum-widget__summary">
+        <span>Dominante Frequenz</span>
+        <strong>@DominantFrequency</strong>
+    </div>
+    <svg class="spectrum-widget__chart" viewBox="0 0 640 220" preserveAspectRatio="none"
+         role="img" aria-label="Live-Klangspektrum mit 16 Frequenzbändern">
+        <defs>
+            <linearGradient id="spectrumFill" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0" stop-color="#23796c" />
+                <stop offset="1" stop-color="#62e8c8" />
+            </linearGradient>
+        </defs>
+        @for (int grid = 0; grid <= 4; grid++)
+        {
+            double y = 10 + grid * 48;
+            <line class="spectrum-widget__grid" x1="0" y1="@Number(y)" x2="640" y2="@Number(y)" />
+        }
+        @for (int index = 0; index < _displayLevels.Length; index++)
+        {
+            double height = Math.Max(2, _displayLevels[index] * 192);
+            double x = 5 + index * 40;
+            double y = 202 - height;
+            double peakY = 202 - _peaks[index] * 192;
+            <rect class="@(index == DominantBandIndex ? "spectrum-widget__bar spectrum-widget__bar--dominant" : "spectrum-widget__bar")"
+                x="@Number(x)" y="@Number(y)" width="30" height="@Number(height)" rx="4" />
+            <line class="spectrum-widget__peak" x1="@Number(x)" y1="@Number(peakY)" x2="@Number(x + 30)" y2="@Number(peakY)" />
+        }
+    </svg>
+    <div class="spectrum-widget__labels"><span>65 Hz</span><span>440 Hz</span><span>4,4 kHz</span></div>
+</div>
+
+@code {
+    [Parameter] public AudioSignalSnapshot? Signal { get; set; }
+
+    private readonly double[] _displayLevels = new double[16];
+    private readonly double[] _peaks = new double[16];
+    private int DominantBandIndex => Signal?.DominantBandIndex ?? -1;
+    private string DominantFrequency => Signal is { DominantFrequencyHz: > 0 } signal
+        ? signal.DominantFrequencyHz >= 1000 ? $"{signal.DominantFrequencyHz / 1000:F2} kHz" : $"{signal.DominantFrequencyHz:F0} Hz"
+        : "–";
+    private static string Number(double value) => value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    protected override void OnParametersSet()
+    {
+        IReadOnlyList<double> levels = Signal?.Spectrum ?? AudioSignalSnapshot.Empty.Spectrum;
+        for (int index = 0; index < _displayLevels.Length; index++)
+        {
+            double target = index < levels.Count ? Math.Clamp(levels[index], 0, 1) : 0;
+            _displayLevels[index] = target >= _displayLevels[index]
+                ? target
+                : _displayLevels[index] * 0.72 + target * 0.28;
+            _peaks[index] = Math.Max(_displayLevels[index], _peaks[index] - 0.018);
+        }
+    }
+}

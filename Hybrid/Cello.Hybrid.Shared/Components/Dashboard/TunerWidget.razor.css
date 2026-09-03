@@ -1,0 +1,104 @@
+.tuner-widget {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+    padding: 14px 20px 18px;
+}
+
+.tuner-widget__readout,
+.tuner-widget__scale {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.tuner-widget__readout span {
+    color: #f4f8fa;
+    font-family: Georgia, serif;
+    font-size: 2rem;
+}
+
+.tuner-widget__readout strong {
+    color: #aebdc7;
+    font-size: .8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.tuner-widget__scale {
+    margin-top: 2px;
+    color: #718392;
+    font-size: .64rem;
+}
+
+.tuner-widget__scale strong { color: #55dabb; }
+
+.tuner-widget__meter {
+    width: 100%;
+    min-height: 90px;
+    overflow: visible;
+}
+
+.tuner-widget__arc,
+.tuner-widget__tick {
+    fill: none;
+    stroke: #344550;
+    stroke-width: 2;
+}
+
+.tuner-widget__tick { stroke-width: 3; }
+.tuner-widget__tick--center { stroke: #5be1c0; stroke-width: 5; }
+
+.tuner-widget__target {
+    fill: none;
+    stroke: #5be1c0;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 4;
+}
+
+.tuner-widget__needle {
+    stroke: #f1bd5d;
+    stroke-linecap: round;
+    stroke-width: 5;
+    filter: drop-shadow(0 0 5px rgba(241, 189, 93, .45));
+    transition: x2 80ms linear, y2 80ms linear, stroke 120ms ease;
+}
+
+.tuner-widget__needle--tuned {
+    stroke: #5be1c0;
+    filter: drop-shadow(0 0 7px rgba(91, 225, 192, .7));
+}
+
+.tuner-widget__needle--inactive { stroke: #52636f; filter: none; }
+.tuner-widget__hub { fill: #0e171f; stroke: #72838e; stroke-width: 4; }
+
+.tuner-widget__status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 11px;
+    margin-top: -4px;
+}
+
+.tuner-widget__status strong,
+.tuner-widget__status small { display: block; }
+.tuner-widget__status small { margin-top: 1px; color: #718392; font-size: .7rem; }
+
+.tuner-widget__check {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    color: #071713;
+    background: #4bd4b3;
+    border-radius: 50%;
+    font-weight: 900;
+}
+
+.tuner-widget__check--adjust { background: #f1bd5d; }
+.tuner-widget__check--inactive { color: #9aa8b2; background: #2d3b45; }
+
+@media (prefers-reduced-motion: reduce) {
+    .tuner-widget__needle { transition: none; }
+}

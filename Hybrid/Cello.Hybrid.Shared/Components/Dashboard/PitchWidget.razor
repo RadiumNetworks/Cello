@@ -1,0 +1,28 @@
+@using Cello.Audio
+
+<div class="pitch-widget">
+    <div class="pitch-widget__eyebrow"><span class="@(IsActive ? null : "inactive")"></span> @(IsActive ? "Analyse läuft" : "Mikrofon aus")</div>
+    <div class="pitch-widget__note">@(Analysis?.Pitch?.NoteName ?? "–")</div>
+    <div class="pitch-widget__frequency">@(Analysis?.Pitch?.Frequency.ToString("F1") ?? "–") <small>Hz</small></div>
+    <div class="pitch-widget__confidence"><span style="width: @ConfidencePercent%"></span></div>
+    <div class="pitch-widget__meta"><span>@CentsText</span><span>@ConfidencePercent % sicher</span></div>
+    @if (IsActive)
+    {
+        <div class="pitch-widget__device" title="@InputName">
+            <span>@(InputName ?? "Windows-Standardmikrofon")</span>
+            <span>@($"{Diagnostics.AverageAnalysisMilliseconds:F1} ms Analyse · {Diagnostics.EstimatedDropoutCount} Aussetzer")</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public MicrophoneAnalysisEventArgs? Analysis { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public string? InputName { get; set; }
+    [Parameter] public AudioCaptureDiagnostics Diagnostics { get; set; } = AudioCaptureDiagnostics.Empty;
+
+    private int ConfidencePercent => (int)Math.Round((Analysis?.Pitch?.Confidence ?? 0) * 100);
+    private string CentsText => Analysis?.Pitch is { } pitch
+        ? $"{pitch.Cents:+0;-0;0} Cent"
+        : "Kein Ton";
+}

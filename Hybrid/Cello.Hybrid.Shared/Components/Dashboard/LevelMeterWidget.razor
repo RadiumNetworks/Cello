@@ -1,0 +1,51 @@
+@using Cello.Audio
+
+<div class="level-meter">
+    <div class="level-meter__header">
+        <span class="level-meter__state @StateClass">@StateText</span>
+        <strong>@RmsText</strong>
+    </div>
+    <div class="level-meter__scale" aria-hidden="true">
+        <span>−60</span><span>−36</span><span>−18</span><span>−6</span><span>0</span>
+    </div>
+    <svg class="level-meter__display" viewBox="0 0 520 92" preserveAspectRatio="none"
+         role="meter" aria-label="Mikrofon-Eingangspegel in dBFS" aria-valuemin="-60"
+         aria-valuemax="0" aria-valuenow="@RmsValue">
+        <defs>
+            <linearGradient id="levelFill" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#23796c" />
+                <stop offset="0.72" stop-color="#5ce0be" />
+                <stop offset="0.9" stop-color="#f3c969" />
+                <stop offset="1" stop-color="#ff6b72" />
+            </linearGradient>
+        </defs>
+        <rect class="level-meter__track" x="4" y="16" width="512" height="48" rx="8" />
+        <rect class="level-meter__fill" x="4" y="16" width="@Number(RmsWidth)" height="48" rx="8" />
+        <line class="level-meter__peak" x1="@Number(PeakX)" y1="9" x2="@Number(PeakX)" y2="72" />
+        @for (int index = 0; index <= 10; index++)
+        {
+            double x = 4 + index * 51.2;
+            <line class="level-meter__division" x1="@Number(x)" y1="66" x2="@Number(x)" y2="78" />
+        }
+    </svg>
+    <div class="level-meter__footer">
+        <span>RMS <strong>@RmsText</strong></span>
+        <span>Spitze <strong>@PeakText</strong></span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public AudioSignalSnapshot? Signal { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+
+    private double RmsDb => Math.Clamp(Signal?.RmsDbFs ?? -60, -60, 0);
+    private double PeakDb => Math.Clamp(Signal?.PeakDbFs ?? -60, -60, 0);
+    private double RmsWidth => Math.Round(512 * (RmsDb + 60) / 60, 2);
+    private double PeakX => Math.Round(4 + 512 * (PeakDb + 60) / 60, 2);
+    private string RmsValue => RmsDb.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+    private string RmsText => Signal is null ? "– dBFS" : $"{Signal.RmsDbFs:F1} dBFS";
+    private string PeakText => Signal is null ? "– dBFS" : $"{Signal.PeakDbFs:F1} dBFS";
+    private string StateText => !IsActive ? "Mikrofon aus" : Signal?.IsClipping == true ? "Übersteuerung" : Signal?.IsTooQuiet == true ? "Signal zu leise" : "Pegel optimal";
+    private string StateClass => !IsActive ? "inactive" : Signal?.IsClipping == true ? "clipping" : Signal?.IsTooQuiet == true ? "quiet" : "good";
+    private static string Number(double value) => value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+}

@@ -1,0 +1,73 @@
+.dashboard-panel {
+    position: absolute;
+    display: grid;
+    grid-template-rows: 48px minmax(0, 1fr);
+    min-width: 260px;
+    min-height: 190px;
+    overflow: hidden;
+    color: #eaf0f6;
+    background: linear-gradient(145deg, rgba(24, 32, 43, .98), rgba(13, 19, 27, .98));
+    border: 1px solid rgba(150, 171, 194, .22);
+    border-radius: 18px;
+    box-shadow: 0 18px 45px rgba(0, 0, 0, .26), inset 0 1px rgba(255, 255, 255, .04);
+    transition: border-color .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+
+.dashboard-panel:hover,
+.dashboard-panel:focus-within {
+    border-color: rgba(72, 201, 176, .58);
+    box-shadow: 0 20px 52px rgba(0, 0, 0, .34), 0 0 0 1px rgba(72, 201, 176, .12);
+}
+
+.dashboard-panel--disabled {
+    opacity: .46;
+    filter: saturate(.35);
+}
+
+.dashboard-panel__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    background: rgba(255, 255, 255, .035);
+    border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+
+.dashboard-panel__header:active { cursor: grabbing; }
+.dashboard-panel__header:focus-visible,
+.dashboard-panel__resize:focus-visible,
+.dashboard-panel__toggle:focus-visible { outline: 2px solid #67e8c7; outline-offset: -2px; }
+.dashboard-panel__grip { color: #667889; font-size: 1.35rem; }
+.dashboard-panel__title { flex: 1; font-size: .76rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+
+.dashboard-panel__toggle {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    color: #50d3b5;
+    background: rgba(80, 211, 181, .1);
+    border: 1px solid rgba(80, 211, 181, .25);
+    border-radius: 50%;
+}
+
+.dashboard-panel__content { min-height: 0; overflow: hidden; }
+.dashboard-panel--disabled .dashboard-panel__content { pointer-events: none; }
+
+.dashboard-panel__resize {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    cursor: nwse-resize;
+    touch-action: none;
+    background: linear-gradient(135deg, transparent 0 45%, #647786 46% 53%, transparent 54% 63%, #647786 64% 71%, transparent 72%);
+    border: 0;
+    opacity: .8;
+}

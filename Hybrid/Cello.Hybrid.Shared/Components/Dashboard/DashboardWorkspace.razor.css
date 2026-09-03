@@ -1,0 +1,24 @@
+.dashboard-shell { min-height: 100%; }
+.dashboard-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.dashboard-toolbar__kicker { color: #50d3b5; font-size: .72rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.dashboard-toolbar h1 { margin: 3px 0 4px; color: #f0f5f7; font-family: Georgia, serif; font-size: clamp(2rem, 4vw, 3.35rem); font-weight: 500; }
+.dashboard-toolbar p { margin: 0; color: #8394a1; }
+.dashboard-toolbar__actions { display: flex; flex-direction: column; align-items: end; gap: 9px; }
+.dashboard-toolbar__audio { display: flex; gap: 8px; }
+.dashboard-toolbar__audio button { padding: 9px 13px; color: #b5c2cb; background: #16212b; border: 1px solid #33434f; border-radius: 9px; font-size: .76rem; }
+.dashboard-toolbar__audio button:hover:not(:disabled) { color: white; border-color: #50d3b5; }
+.dashboard-toolbar__audio button:disabled { cursor: not-allowed; opacity: .42; }
+.dashboard-toolbar__audio .microphone.active { color: #bff7e9; background: rgba(72,201,176,.13); border-color: rgba(72,201,176,.45); }
+.dashboard-toolbar__modules { display: flex; flex-wrap: wrap; justify-content: end; gap: 7px; }
+.dashboard-toolbar__modules button, .dashboard-toolbar__reset { padding: 7px 11px; color: #8294a2; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.1); border-radius: 999px; font-size: .72rem; }
+.dashboard-toolbar__modules button.active { color: #bff7e9; background: rgba(72,201,176,.11); border-color: rgba(72,201,176,.32); }
+.dashboard-toolbar__reset { color: #aab6bf; border-radius: 8px; }
+.dashboard-toolbar button:hover { color: white; border-color: #50d3b5; }
+.dashboard-alert { margin: -12px 0 18px; padding: 10px 13px; color: #ffd8d8; background: rgba(163,50,50,.18); border: 1px solid rgba(255,112,112,.3); border-radius: 9px; font-size: .82rem; }
+.dashboard-canvas { position: relative; min-width: 1430px; overflow: hidden; border: 1px solid rgba(255,255,255,.055); border-radius: 22px; background-color: #0b1118; background-image: radial-gradient(circle, rgba(123,145,161,.16) 1px, transparent 1px), radial-gradient(circle at 50% 0, rgba(40,123,108,.11), transparent 42%); background-size: 24px 24px, 100% 100%; }
+.dashboard-canvas.is-interacting { cursor: grabbing; }
+@media (max-width: 900px) {
+    .dashboard-toolbar { align-items: start; flex-direction: column; }
+    .dashboard-toolbar__actions { align-items: start; }
+    .dashboard-toolbar__modules { justify-content: start; }
+}

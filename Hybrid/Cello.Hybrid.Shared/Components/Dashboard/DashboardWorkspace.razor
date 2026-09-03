@@ -1,0 +1,152 @@
+@using Cello.Hybrid.Shared.Models
+@using Cello.Hybrid.Shared.Services
+@inject DashboardLayoutService LayoutService
+@inject AudioDashboardService AudioDashboard
+@implements IDisposable
+
+<div class="dashboard-shell">
+    <div class="dashboard-toolbar">
+        <div>
+            <span class="dashboard-toolbar__kicker">Intonation & Klang</span>
+            <h1>Tuner</h1>
+            <p>Cello stimmen, Tonhöhe prüfen und das Eingangssignal analysieren.</p>
+        </div>
+        <div class="dashboard-toolbar__actions">
+            <div class="dashboard-toolbar__audio">
+                <button class="microphone @(AudioDashboard.IsActive ? "active" : null)" type="button" @onclick="AudioDashboard.ToggleMicrophoneAsync">
+                    @(AudioDashboard.IsActive ? "■ Mikrofon stoppen" : "● Mikrofon starten")
+                </button>
+                <button type="button" disabled="@(AudioDashboard.LatestAnalysis?.Pitch is null)" @onmousedown="AudioDashboard.PlayDetectedNote" @onmouseup="AudioDashboard.StopNote" @onmouseleave="AudioDashboard.StopNote">Erkannten Ton hören</button>
+            </div>
+            <div class="dashboard-toolbar__modules" aria-label="Elemente aktivieren oder deaktivieren">
+                @foreach (DashboardPanelState panel in _panels.OrderBy(panel => panel.Order))
+                {
+                    <button class="@(panel.IsEnabled ? "active" : null)" type="button" @onclick="() => TogglePanel(panel.Id)">
+                        <span aria-hidden="true">@(panel.IsEnabled ? "✓" : "+")</span> @panel.Title
+                    </button>
+                }
+            </div>
+            <button class="dashboard-toolbar__reset" type="button" @onclick="ResetLayoutAsync">Layout zurücksetzen</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(AudioDashboard.ErrorMessage))
+    {
+        <div class="dashboard-alert" role="alert">@AudioDashboard.ErrorMessage</div>
+    }
+
+    <div class="dashboard-canvas @(Interaction is null ? null : "is-interacting")"
+         style="height: @CanvasHeight"
+         @onpointermove="ContinueInteraction"
+         @onpointerup="EndInteractionAsync"
+         @onpointercancel="EndInteractionAsync"
+         @onpointerleave="EndInteractionAsync">
+        @foreach (DashboardPanelState panel in _panels.OrderBy(panel => panel.Order))
+        {
+            <DashboardPanel Panel="panel"
+                            ZIndex="@(panel.Id == _frontPanelId ? 3 : 1)"
+                            InteractionStarted="StartInteraction"
+                            PanelChanged="UpdateAndSaveAsync">
+                @switch (panel.Id)
+                {
+                    case "pitch": <PitchWidget Analysis="AudioDashboard.LatestAnalysis"
+                                               IsActive="AudioDashboard.IsActive"
+                                               InputName="@AudioDashboard.InputName"
+                                               Diagnostics="AudioDashboard.Diagnostics" /> break;
+                    case "tuner": <TunerWidget Pitch="AudioDashboard.LatestAnalysis?.Pitch" /> break;
+                    case "level": <LevelMeterWidget Signal="AudioDashboard.LatestAnalysis?.Signal" IsActive="AudioDashboard.IsActive" /> break;
+                    case "spectrum": <SpectrumWidget Signal="AudioDashboard.LatestAnalysis?.Signal" /> break;
+                    case "notation": <NotationWidget Pitch="AudioDashboard.LatestAnalysis?.Pitch" /> break;
+                    case "cello-image": <ImageWidget ImageSource="_content/Cello.Hybrid.Shared/images/cello.png" AlternativeText="Cello" /> break;
+                }
+            </DashboardPanel>
+        }
+    </div>
+</div>
+
+@code {
+    private List<DashboardPanelState> _panels = DashboardLayoutService.CreateDefaultLayout().ToList();
+    private ActiveInteraction? Interaction { get; set; }
+    private string? _frontPanelId;
+
+    private string CanvasHeight => FormattableString.Invariant($"{Math.Max(650, _panels.Max(panel => panel.Y + panel.Height) + 40)}px");
+
+    protected override void OnInitialized()
+    {
+        AudioDashboard.Updated += AudioDashboard_Updated;
+    }
+
+    private void AudioDashboard_Updated(object? sender, EventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _panels = (await LayoutService.LoadAsync()).ToList();
+        StateHasChanged();
+    }
+
+    private void StartInteraction(DashboardPanel.DashboardInteraction interaction)
+    {
+        DashboardPanelState panel = FindPanel(interaction.PanelId);
+        Interaction = new ActiveInteraction(interaction.Mode, interaction.PointerX, interaction.PointerY, panel);
+        _frontPanelId = panel.Id;
+    }
+
+    private void ContinueInteraction(PointerEventArgs args)
+    {
+        if (Interaction is null) return;
+        double deltaX = args.ClientX - Interaction.PointerX;
+        double deltaY = args.ClientY - Interaction.PointerY;
+        DashboardPanelState changed = Interaction.Mode == DashboardPanel.DashboardInteractionMode.Move
+            ? Interaction.Original.MoveBy(deltaX, deltaY)
+            : Interaction.Original.ResizeBy(deltaX, deltaY);
+        ReplacePanel(changed);
+    }
+
+    private async Task EndInteractionAsync()
+    {
+        if (Interaction is null) return;
+        Interaction = null;
+        await LayoutService.SaveAsync(_panels);
+    }
+
+    private async Task TogglePanel(string panelId)
+    {
+        DashboardPanelState panel = FindPanel(panelId);
+        await UpdateAndSaveAsync(panel with { IsEnabled = !panel.IsEnabled });
+    }
+
+    private async Task UpdateAndSaveAsync(DashboardPanelState changed)
+    {
+        ReplacePanel(changed);
+        await LayoutService.SaveAsync(_panels);
+    }
+
+    private async Task ResetLayoutAsync()
+    {
+        await LayoutService.ResetAsync();
+        _panels = DashboardLayoutService.CreateDefaultLayout().ToList();
+        Interaction = null;
+        _frontPanelId = null;
+    }
+
+    private DashboardPanelState FindPanel(string panelId) => _panels.Single(panel => panel.Id == panelId);
+
+    private void ReplacePanel(DashboardPanelState changed)
+    {
+        int index = _panels.FindIndex(panel => panel.Id == changed.Id);
+        if (index >= 0) _panels[index] = changed;
+    }
+
+    private sealed record ActiveInteraction(
+        DashboardPanel.DashboardInteractionMode Mode,
+        double PointerX,
+        double PointerY,
+        DashboardPanelState Original);
+
+    public void Dispose()
+    {
+        AudioDashboard.Updated -= AudioDashboard_Updated;
+        AudioDashboard.StopNote();
+    }
+}

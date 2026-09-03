@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Cello.Audio.Windows</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cello.Core\Cello.Core.csproj" />
+    <PackageReference Include="MeltySynth" Version="2.4.1" />
+    <PackageReference Include="NAudio.Wasapi" Version="3.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\..\WinUI\Assets\SoundFonts\FluidR3_GM_GS.sf2"
+             Link="Assets\SoundFonts\FluidR3_GM_GS.sf2"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\WinUI\Assets\SoundFonts\FluidR3_LICENSE.txt"
+             Link="Assets\SoundFonts\FluidR3_LICENSE.txt"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

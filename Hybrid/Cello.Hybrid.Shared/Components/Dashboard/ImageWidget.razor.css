@@ -1,0 +1,16 @@
+.image-widget {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 12px;
+    place-items: center;
+}
+
+.image-widget img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 10px;
+}

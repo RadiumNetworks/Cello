@@ -1,0 +1,54 @@
+<div class="tuner-widget">
+    <div class="tuner-widget__readout">
+        <span>@(Pitch?.NoteName ?? "–")</span>
+        <strong>@CentsText</strong>
+    </div>
+    <div class="tuner-widget__scale"><span>−50</span><span>−25</span><strong>0 Cent</strong><span>+25</span><span>+50</span></div>
+    <svg class="tuner-widget__meter" viewBox="0 0 400 150" role="meter"
+         aria-label="Stimmabweichung in Cent" aria-valuemin="-50" aria-valuemax="50"
+         aria-valuenow="@MeterValue">
+        <path class="tuner-widget__arc" d="M 42 126 A 170 170 0 0 1 358 126" />
+        @for (int index = 0; index <= 20; index++)
+        {
+            double angle = -60 + index * 6;
+            double outerX = PolarX(200, 170, angle);
+            double outerY = PolarY(174, 170, angle);
+            double innerRadius = index % 5 == 0 ? 148 : 157;
+            double innerX = PolarX(200, innerRadius, angle);
+            double innerY = PolarY(174, innerRadius, angle);
+            <line class="@(index == 10 ? "tuner-widget__tick tuner-widget__tick--center" : "tuner-widget__tick")"
+                  x1="@Number(innerX)" y1="@Number(innerY)" x2="@Number(outerX)" y2="@Number(outerY)" />
+        }
+        <path class="tuner-widget__target" d="M 188 15 L 200 4 L 212 15" />
+        <line class="@NeedleClass" x1="200" y1="174" x2="@Number(NeedleX)" y2="@Number(NeedleY)" />
+        <circle class="tuner-widget__hub" cx="200" cy="174" r="13" />
+    </svg>
+    <div class="tuner-widget__status">
+        <span class="@StatusClass">@StatusGlyph</span>
+        <div><strong>@StatusText</strong><small>@DetailText</small></div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public PitchResult? Pitch { get; set; }
+
+    private double ClampedCents => Math.Clamp(Pitch?.Cents ?? 0, -50, 50);
+    private double NeedleAngle => ClampedCents * 1.2;
+    private double NeedleX => PolarX(200, 137, NeedleAngle);
+    private double NeedleY => PolarY(174, 137, NeedleAngle);
+    private string MeterValue => Pitch is null ? "0" : ClampedCents.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+    private string NeedleClass => Pitch is null ? "tuner-widget__needle tuner-widget__needle--inactive" : Math.Abs(Pitch.Cents) <= 5 ? "tuner-widget__needle tuner-widget__needle--tuned" : "tuner-widget__needle";
+    private string StatusClass => Pitch is null ? "tuner-widget__check tuner-widget__check--inactive" : Math.Abs(Pitch.Cents) <= 5 ? "tuner-widget__check" : "tuner-widget__check tuner-widget__check--adjust";
+    private string StatusGlyph => Pitch is null ? "·" : Math.Abs(Pitch.Cents) <= 5 ? "✓" : Pitch.Cents < 0 ? "←" : "→";
+    private string StatusText => Pitch is null ? "Warte auf einen Ton" : Math.Abs(Pitch.Cents) <= 5 ? "Sauber gestimmt" : Pitch.Cents < 0 ? "Zu tief" : "Zu hoch";
+    private string DetailText => Pitch is null ? "Mikrofon aktivieren und Ton halten" : $"{Pitch.NoteName} · {Pitch.Frequency:F1} Hz · {Pitch.Cents:+0;-0;0} Cent";
+    private string CentsText => Pitch is null ? "Kein Signal" : $"{Pitch.Cents:+0.0;-0.0;0.0} Cent";
+
+    private static double PolarX(double center, double radius, double angle) =>
+        Math.Round(center + radius * Math.Sin(angle * Math.PI / 180), 2);
+
+    private static double PolarY(double center, double radius, double angle) =>
+        Math.Round(center - radius * Math.Cos(angle * Math.PI / 180), 2);
+
+    private static string Number(double value) => value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+}

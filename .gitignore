@@ -56,3 +56,6 @@ Generated\ Files/
 # SoundFonts are large binary assets and must be downloaded separately.
 Cello/Assets/SoundFonts/*.sf2
 Cello/Assets/SoundFonts/*.sf3
+/Hybrid/Cello.Hybrid.Shared/wwwroot
+/Hybrid/Cello.Hybrid.Web.Client/wwwroot
+WinUI/Assets/SoundFonts/FluidR3_GM_GS.sf2

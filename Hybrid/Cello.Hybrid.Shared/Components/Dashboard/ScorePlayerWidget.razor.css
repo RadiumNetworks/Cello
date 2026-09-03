@@ -1,0 +1,17 @@
+.score-player { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); gap: 9px; height: 100%; padding: 14px; }
+.score-player__toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.score-player__toolbar button, .score-player__file span { padding: 7px 10px; color: #c5d1d8; background: #17232d; border: 1px solid #344651; border-radius: 7px; font-size: .72rem; cursor: pointer; }
+.score-player__toolbar button:hover:not(:disabled), .score-player__file:hover span { color: white; border-color: #50d3b5; }
+.score-player__toolbar button:disabled { cursor: not-allowed; opacity: .4; }
+.score-player__file ::deep input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.score-player__loop, .score-player__tempo, .score-player__option { display: flex; align-items: center; gap: 6px; color: #93a4ae; font-size: .72rem; }
+.score-player__loop.disabled { opacity: .45; }
+.score-player__loop input, .score-player__option input { accent-color: #50d3b5; }
+.score-player__tempo input { width: 110px; accent-color: #50d3b5; }
+.score-player__tempo strong { min-width: 38px; color: #c8d5dc; }
+.score-player__metadata { display: flex; align-items: end; justify-content: space-between; gap: 18px; color: #8294a2; font-size: .72rem; }
+.score-player__metadata div strong, .score-player__metadata div span { display: block; }
+.score-player__metadata strong { color: #e5edf1; font-family: Georgia, serif; font-size: 1.05rem; }
+.score-player__hint { color: #6f928b; font-size: .7rem; }
+.score-player__error { padding: 7px 9px; color: #ffd1d1; background: rgba(164,49,49,.18); border: 1px solid rgba(255,110,110,.28); border-radius: 7px; font-size: .72rem; }
+.score-player__score { min-height: 0; overflow: hidden; }

@@ -1,0 +1,52 @@
+@using Cello
+
+<div class="notation-widget">
+    <svg viewBox="0 0 320 170" role="img" aria-label="Aktuell erkannte Note">
+        @for (int line = 0; line < 5; line++)
+        {
+            <line x1="18" y1="@(44 + line * 20)" x2="302" y2="@(44 + line * 20)" />
+        }
+        <text x="28" y="119">𝄢</text>
+        @if (Pitch is not null)
+        {
+            double x = 205;
+            double y = Math.Clamp(NoteY(Pitch.MidiNote), 24, 144);
+            <g class="notation-widget__notes">
+                <ellipse class="selected" cx="@Number(x)" cy="@Number(y)" rx="14" ry="9" transform="@Transform(x, y)" />
+                <line class="selected" x1="@Number(x + 13)" y1="@Number(y)" x2="@Number(x + 13)" y2="@Number(y - 50)" />
+            </g>
+        }
+    </svg>
+    <div class="notation-widget__footer">
+        <strong>@(Pitch?.NoteName ?? "–")</strong>
+        <span>@(Pitch is null ? "Mikrofon starten" : $"MIDI {Pitch.MidiNote}")</span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public PitchResult? Pitch { get; set; }
+
+    // In the bass clef, C4 lies on the first ledger line above the staff (y = 24).
+    // Every diatonic step moves half a staff-line spacing (10 SVG units).
+    private static double NoteY(int midiNote) => 24 - DiatonicStepsFromC4(midiNote) * 10;
+
+    private static int DiatonicStepsFromC4(int midiNote)
+    {
+        int octave = midiNote / 12 - 1;
+        int pitchClass = ((midiNote % 12) + 12) % 12;
+        int step = pitchClass switch
+        {
+            0 or 1 => 0,
+            2 or 3 => 1,
+            4 => 2,
+            5 or 6 => 3,
+            7 or 8 => 4,
+            9 or 10 => 5,
+            _ => 6
+        };
+        return (octave - 4) * 7 + step;
+    }
+
+    private static string Number(double value) => value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+    private static string Transform(double x, double y) => FormattableString.Invariant($"rotate(-12 {x} {y})");
+}

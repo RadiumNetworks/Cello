@@ -1,0 +1,46 @@
+.score-empty { display: grid; place-items: center; min-height: 210px; color: #718392; border: 1px dashed #35434e; border-radius: 10px; }
+.score-scroll { height: 100%; min-height: 210px; overflow: auto; background: rgba(255,255,255,.018); border-radius: 10px; }
+.score { display: block; width: 100%; min-width: 720px; min-height: 220px; }
+.staff-line, .measure-line, .ledger-line { stroke: #52626e; stroke-width: 1.2; }
+.measure-line { stroke-width: 1.6; }
+.ledger-line { stroke: #82919a; }
+.clef { fill: #cbd6dc; font-family: 'Bravura Text', 'Segoe UI Symbol', serif; font-size: 55px; }
+.key-signature { fill: #cbd6dc; font: 25px 'Bravura Text', 'Segoe UI Symbol', serif; text-anchor: middle; }
+.time-signature { fill: #bac6cc; font: 700 20px Georgia, serif; text-anchor: middle; }
+.measure-number { fill: #687b87; font: 9px 'Segoe UI', sans-serif; }
+.score-note { --note-color: #d7e0e5; cursor: pointer; outline: none; }
+.score-note.pitch-0 { --note-color: #ef6b73; }
+.score-note.pitch-1 { --note-color: #ed8568; }
+.score-note.pitch-2 { --note-color: #eaa84f; }
+.score-note.pitch-3 { --note-color: #d2bd52; }
+.score-note.pitch-4 { --note-color: #9ec966; }
+.score-note.pitch-5 { --note-color: #65ce8b; }
+.score-note.pitch-6 { --note-color: #4bc8b8; }
+.score-note.pitch-7 { --note-color: #52b9dc; }
+.score-note.pitch-8 { --note-color: #739ee8; }
+.score-note.pitch-9 { --note-color: #9b87e5; }
+.score-note.pitch-10 { --note-color: #c779cf; }
+.score-note.pitch-11 { --note-color: #df70a4; }
+.score-note .note-head { fill: var(--note-color); stroke: var(--note-color); stroke-width: 1.8; }
+.score-note .note-head.open { fill: #13202a; stroke-width: 2.5; }
+.score-note .stem, .score-note .flag { fill: none; stroke: var(--note-color); stroke-width: 2.5; stroke-linecap: round; }
+.score-note .flag { stroke-width: 2.5; }
+.beam { fill: none; stroke: #cbd6dc; stroke-width: 7; stroke-linecap: butt; }
+.beam-2, .beam-3, .beam-4 { stroke-width: 6; }
+.score-note .duration-dot, .score-note .articulation { fill: var(--note-color); }
+.score-note .pitch-label { fill: var(--note-color); font: 600 10px 'Segoe UI', sans-serif; text-anchor: middle; }
+.score-note .tuplet { fill: #bac6cc; font: italic 11px Georgia, serif; text-anchor: middle; }
+.score-note:hover .note-head, .score-note:focus-visible .note-head { stroke: #70efd0; stroke-width: 4; }
+.score-note.in-range { --note-color: #77a99d; }
+.score-note.range-start { --note-color: #50d3b5; }
+.score-note.range-start .note-head { stroke: #b7ffed; stroke-width: 3; }
+.score-note.range-end { --note-color: #f09c62; }
+.score-note.range-end .note-head { stroke: #ffd3b5; stroke-width: 3; }
+.score-note.playing { --note-color: #f5db6e; }
+.score-note.playing .note-head { stroke: white; stroke-width: 4; filter: drop-shadow(0 0 7px #f5db6e); }
+.tie, .slur { fill: none; stroke: #aab9c1; stroke-width: 1.7; stroke-linecap: round; }
+.slur { stroke-width: 2.2; }
+.directive { fill: #cbd6dc; text-anchor: middle; }
+.directive.dynamic { font: italic 700 16px Georgia, serif; }
+.directive.words { font: italic 11px Georgia, serif; }
+.wedge { fill: none; stroke: #b9c6cc; stroke-width: 1.5; }

@@ -1,0 +1,89 @@
+@using Cello.Hybrid.Shared.Models
+
+<section class="dashboard-panel @(Panel.IsEnabled ? null : "dashboard-panel--disabled")"
+         style="@PanelStyle"
+         aria-label="@Panel.Title">
+    <header class="dashboard-panel__header"
+            tabindex="0"
+            title="Zum Verschieben ziehen oder Pfeiltasten verwenden"
+            @onpointerdown="BeginMove"
+            @onkeydown="MoveWithKeyboard">
+        <span class="dashboard-panel__grip" aria-hidden="true">⠿</span>
+        <span class="dashboard-panel__title">@Panel.Title</span>
+        <button class="dashboard-panel__toggle"
+                type="button"
+                title="@(Panel.IsEnabled ? "Element deaktivieren" : "Element aktivieren")"
+                aria-pressed="@Panel.IsEnabled"
+                @onpointerdown:stopPropagation
+                @onclick="ToggleEnabled">
+            <span aria-hidden="true">@(Panel.IsEnabled ? "●" : "○")</span>
+            <span class="visually-hidden">@(Panel.IsEnabled ? "Aktiv" : "Inaktiv")</span>
+        </button>
+    </header>
+
+    <div class="dashboard-panel__content" aria-hidden="@(!Panel.IsEnabled)">
+        @ChildContent
+    </div>
+
+    <button class="dashboard-panel__resize"
+            type="button"
+            title="Größe verändern"
+            aria-label="Größe von @Panel.Title verändern"
+            @onpointerdown="BeginResize"
+            @onkeydown="ResizeWithKeyboard"></button>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public DashboardPanelState Panel { get; set; } = null!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public int ZIndex { get; set; } = 1;
+    [Parameter] public EventCallback<DashboardInteraction> InteractionStarted { get; set; }
+    [Parameter] public EventCallback<DashboardPanelState> PanelChanged { get; set; }
+
+    private string PanelStyle => FormattableString.Invariant(
+        $"left: {Panel.X}px; top: {Panel.Y}px; width: {Panel.Width}px; height: {Panel.Height}px; z-index: {ZIndex}");
+
+    private Task BeginMove(PointerEventArgs args) => InteractionStarted.InvokeAsync(
+        new DashboardInteraction(Panel.Id, DashboardInteractionMode.Move, args.ClientX, args.ClientY));
+
+    private Task BeginResize(PointerEventArgs args) => InteractionStarted.InvokeAsync(
+        new DashboardInteraction(Panel.Id, DashboardInteractionMode.Resize, args.ClientX, args.ClientY));
+
+    private Task ToggleEnabled() => PanelChanged.InvokeAsync(Panel with { IsEnabled = !Panel.IsEnabled });
+
+    private Task MoveWithKeyboard(KeyboardEventArgs args)
+    {
+        int step = args.ShiftKey ? 25 : 8;
+        DashboardPanelState changed = args.Key switch
+        {
+            "ArrowLeft" => Panel.MoveBy(-step, 0),
+            "ArrowRight" => Panel.MoveBy(step, 0),
+            "ArrowUp" => Panel.MoveBy(0, -step),
+            "ArrowDown" => Panel.MoveBy(0, step),
+            _ => Panel
+        };
+        return changed == Panel ? Task.CompletedTask : PanelChanged.InvokeAsync(changed);
+    }
+
+    private Task ResizeWithKeyboard(KeyboardEventArgs args)
+    {
+        int step = args.ShiftKey ? 40 : 12;
+        DashboardPanelState changed = args.Key switch
+        {
+            "ArrowLeft" => Panel.ResizeBy(-step, 0),
+            "ArrowRight" => Panel.ResizeBy(step, 0),
+            "ArrowUp" => Panel.ResizeBy(0, -step),
+            "ArrowDown" => Panel.ResizeBy(0, step),
+            _ => Panel
+        };
+        return changed == Panel ? Task.CompletedTask : PanelChanged.InvokeAsync(changed);
+    }
+
+    public sealed record DashboardInteraction(
+        string PanelId,
+        DashboardInteractionMode Mode,
+        double PointerX,
+        double PointerY);
+
+    public enum DashboardInteractionMode { Move, Resize }
+}
